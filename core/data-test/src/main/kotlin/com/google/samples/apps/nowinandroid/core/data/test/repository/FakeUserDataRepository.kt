@@ -47,6 +47,21 @@ class FakeUserDataRepository @Inject constructor(
         niaPreferencesDataSource.setNewsResourceBookmarked(newsResourceId, bookmarked)
     }
 
+    override suspend fun updateBookmarkNote(newsResourceId: String, note: String?) {
+        niaPreferencesDataSource.updateBookmarkNote(newsResourceId, note)
+    }
+
+    override suspend fun removeBookmarkedNewsResources(newsResourceIds: Set<String>) {
+        niaPreferencesDataSource.removeBookmarkedNewsResources(newsResourceIds)
+    }
+
+    override suspend fun restoreBookmarkedNewsResources(
+        newsResourceIds: Set<String>,
+        notes: Map<String, String>,
+    ) {
+        niaPreferencesDataSource.restoreBookmarkedNewsResources(newsResourceIds, notes)
+    }
+
     override suspend fun setNewsResourceViewed(newsResourceId: String, viewed: Boolean) =
         niaPreferencesDataSource.setNewsResourceViewed(newsResourceId, viewed)
 

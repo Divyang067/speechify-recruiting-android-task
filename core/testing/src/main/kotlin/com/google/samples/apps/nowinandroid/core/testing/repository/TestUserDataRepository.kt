@@ -33,6 +33,7 @@ val emptyUserData = UserData(
     darkThemeConfig = DarkThemeConfig.FOLLOW_SYSTEM,
     useDynamicColor = false,
     shouldHideOnboarding = false,
+    bookmarkNotes = emptyMap(),
 )
 
 class TestUserDataRepository : UserDataRepository {
@@ -68,8 +69,55 @@ class TestUserDataRepository : UserDataRepository {
             } else {
                 current.bookmarkedNewsResources - newsResourceId
             }
+            val notes = if (bookmarked) {
+                current.bookmarkNotes
+            } else {
+                current.bookmarkNotes - newsResourceId
+            }
 
-            _userData.tryEmit(current.copy(bookmarkedNewsResources = bookmarkedNews))
+            _userData.tryEmit(current.copy(bookmarkedNewsResources = bookmarkedNews, bookmarkNotes = notes))
+        }
+    }
+
+    override suspend fun updateBookmarkNote(newsResourceId: String, note: String?) {
+        currentUserData.let { current ->
+            val notes = if (note.isNullOrBlank()) {
+                current.bookmarkNotes - newsResourceId
+            } else {
+                current.bookmarkNotes + (newsResourceId to note.take(280))
+            }
+            _userData.tryEmit(current.copy(bookmarkNotes = notes))
+        }
+    }
+
+    override suspend fun removeBookmarkedNewsResources(newsResourceIds: Set<String>) {
+        currentUserData.let { current ->
+            _userData.tryEmit(
+                current.copy(
+                    bookmarkedNewsResources = current.bookmarkedNewsResources - newsResourceIds,
+                    bookmarkNotes = current.bookmarkNotes - newsResourceIds,
+                ),
+            )
+        }
+    }
+
+    override suspend fun restoreBookmarkedNewsResources(
+        newsResourceIds: Set<String>,
+        notes: Map<String, String>,
+    ) {
+        currentUserData.let { current ->
+            val updatedNotes = current.bookmarkNotes.toMutableMap()
+            newsResourceIds.forEach { id ->
+                notes[id]?.let { note ->
+                    if (note.isNotBlank()) updatedNotes[id] = note
+                }
+            }
+            _userData.tryEmit(
+                current.copy(
+                    bookmarkedNewsResources = current.bookmarkedNewsResources + newsResourceIds,
+                    bookmarkNotes = updatedNotes,
+                ),
+            )
         }
     }
 

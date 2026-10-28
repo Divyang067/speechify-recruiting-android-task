@@ -21,4 +21,10 @@
     <string name="feature_bookmarks_api_empty_description">Updates you save will be stored here\nto read later</string>
     <string name="feature_bookmarks_api_removed">Bookmark removed</string>
     <string name="feature_bookmarks_api_undo">UNDO</string>
+    <string name="feature_bookmarks_api_edit">Edit</string>
+    <string name="feature_bookmarks_api_cancel">Cancel</string>
+    <string name="feature_bookmarks_api_select_all">Select all</string>
+    <string name="feature_bookmarks_api_remove">Remove</string>
+    <string name="feature_bookmarks_api_selected_counter">%1$d selected</string>
+    <string name="feature_bookmarks_api_bulk_removed">%1$d bookmarks removed</string>
 </resources>

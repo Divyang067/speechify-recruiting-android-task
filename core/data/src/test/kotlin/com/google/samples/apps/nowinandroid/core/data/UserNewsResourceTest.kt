@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2023 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -101,5 +101,33 @@ class UserNewsResourceTest {
             newsResource1.id in userData.bookmarkedNewsResources,
             userNewsResource.isSaved,
         )
+    }
+
+    @Test
+    fun userNewsResources_bookmarkNoteIsMappedFromUserData() {
+        val newsResource1 = NewsResource(
+            id = "N1",
+            title = "Test news title",
+            content = "Test news content",
+            url = "Test URL",
+            headerImageUrl = "Test image URL",
+            publishDate = Clock.System.now(),
+            type = "Article 📚",
+            topics = emptyList(),
+        )
+
+        val userDataWithNote = UserData(
+            bookmarkedNewsResources = setOf("N1"),
+            viewedNewsResources = emptySet(),
+            followedTopics = emptySet(),
+            themeBrand = DEFAULT,
+            darkThemeConfig = FOLLOW_SYSTEM,
+            useDynamicColor = false,
+            shouldHideOnboarding = true,
+            bookmarkNotes = mapOf("N1" to "Personal note for N1"),
+        )
+
+        val userNewsResource = UserNewsResource(newsResource1, userDataWithNote)
+        assertEquals("Personal note for N1", userNewsResource.bookmarkNote)
     }
 }

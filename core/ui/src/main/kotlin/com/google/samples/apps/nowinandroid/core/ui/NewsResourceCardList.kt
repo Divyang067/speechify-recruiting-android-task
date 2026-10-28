@@ -39,6 +39,7 @@ fun LazyListScope.userNewsResourceCardItems(
     onNewsResourceViewed: (String) -> Unit,
     onTopicClick: (String) -> Unit,
     itemModifier: Modifier = Modifier,
+    onToggleBookmarkWithNote: ((item: UserNewsResource, note: String?) -> Unit)? = null,
 ) = items(
     items = items,
     key = { it.id },
@@ -53,6 +54,9 @@ fun LazyListScope.userNewsResourceCardItems(
             isBookmarked = userNewsResource.isSaved,
             hasBeenViewed = userNewsResource.hasBeenViewed,
             onToggleBookmark = { onToggleBookmark(userNewsResource) },
+            onToggleBookmarkWithNote = onToggleBookmarkWithNote?.let { callback ->
+                { note -> callback(userNewsResource, note) }
+            },
             onClick = {
                 analyticsHelper.logNewsResourceOpened(
                     newsResourceId = userNewsResource.id,

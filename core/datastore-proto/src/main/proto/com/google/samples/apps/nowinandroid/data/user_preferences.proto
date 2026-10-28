@@ -41,6 +41,7 @@ message UserPreferences {
     map<string, bool> followed_author_ids = 14;
     map<string, bool> bookmarked_news_resource_ids = 15;
     map<string, bool> viewed_news_resource_ids = 20;
+    map<string, string> bookmark_notes = 21;
 
     ThemeBrandProto theme_brand = 16;
     DarkThemeConfigProto dark_theme_config = 17;
@@ -49,5 +50,5 @@ message UserPreferences {
 
     bool use_dynamic_color = 19;
 
-    // NEXT AVAILABLE ID: 21
+    // NEXT AVAILABLE ID: 22
 }

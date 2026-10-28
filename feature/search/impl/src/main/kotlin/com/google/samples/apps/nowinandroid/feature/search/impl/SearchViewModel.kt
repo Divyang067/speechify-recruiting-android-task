@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2023 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -115,7 +115,16 @@ class SearchViewModel @Inject constructor(
         }
     }
 
-    fun setNewsResourceBookmarked(newsResourceId: String, isChecked: Boolean) {
+    fun setNewsResourceBookmarked(newsResourceId: String, isChecked: Boolean, note: String? = null) {
+        viewModelScope.launch {
+            userDataRepository.setNewsResourceBookmarked(newsResourceId, isChecked)
+            if (isChecked && !note.isNullOrBlank()) {
+                userDataRepository.updateBookmarkNote(newsResourceId, note)
+            }
+        }
+    }
+
+    private fun _unused_setNewsResourceBookmarked(newsResourceId: String, isChecked: Boolean) {
         viewModelScope.launch {
             userDataRepository.setNewsResourceBookmarked(newsResourceId, isChecked)
         }

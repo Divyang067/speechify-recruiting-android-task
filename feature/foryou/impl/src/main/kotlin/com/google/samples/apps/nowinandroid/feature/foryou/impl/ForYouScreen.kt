@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2022 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -127,6 +127,7 @@ fun ForYouScreen(
         saveFollowedTopics = viewModel::dismissOnboarding,
         onNewsResourcesCheckedChanged = viewModel::updateNewsResourceSaved,
         onNewsResourceViewed = { viewModel.setNewsResourceViewed(it, true) },
+        onBookmarkWithNote = { id, note -> viewModel.updateNewsResourceSaved(id, true, note) },
         modifier = modifier,
     )
 }
@@ -144,6 +145,7 @@ internal fun ForYouScreen(
     onNewsResourcesCheckedChanged: (String, Boolean) -> Unit,
     onNewsResourceViewed: (String) -> Unit,
     modifier: Modifier = Modifier,
+    onBookmarkWithNote: ((String, String?) -> Unit)? = null,
 ) {
     val isOnboardingLoading = onboardingUiState is OnboardingUiState.Loading
     val isFeedLoading = feedState is NewsFeedUiState.Loading
@@ -195,6 +197,7 @@ internal fun ForYouScreen(
                 onNewsResourcesCheckedChanged = onNewsResourcesCheckedChanged,
                 onNewsResourceViewed = onNewsResourceViewed,
                 onTopicClick = onTopicClick,
+                onBookmarkWithNote = onBookmarkWithNote,
             )
 
             item(span = StaggeredGridItemSpan.FullLine, contentType = "bottomSpacing") {

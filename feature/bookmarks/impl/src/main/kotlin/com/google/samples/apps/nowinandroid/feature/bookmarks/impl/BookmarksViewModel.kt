@@ -17,6 +17,7 @@
 package com.google.samples.apps.nowinandroid.feature.bookmarks.impl
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
@@ -43,6 +44,14 @@ class BookmarksViewModel @Inject constructor(
 
     var shouldDisplayUndoBookmark by mutableStateOf(false)
     private var lastRemovedBookmarkId: String? = null
+    private var lastRemovedBookmarkNote: String? = null
+
+    // Multi-select mode state
+    var isInSelectionMode by mutableStateOf(false)
+    var selectedBookmarkIds by mutableStateOf(emptySet<String>())
+    var shouldDisplayUndoBulkRemoval by mutableStateOf(false)
+    var bulkRemovedCount by mutableIntStateOf(0)
+    private var lastBulkRemovedBookmarks: Map<String, String> = emptyMap()
 
     val feedUiState: StateFlow<NewsFeedUiState> =
         userNewsResourceRepository.observeAllBookmarked()
@@ -55,9 +64,12 @@ class BookmarksViewModel @Inject constructor(
             )
 
     fun removeFromSavedResources(newsResourceId: String) {
+        val feed = (feedUiState.value as? NewsFeedUiState.Success)?.feed ?: emptyList()
+        val currentNote = feed.find { it.id == newsResourceId }?.bookmarkNote
         viewModelScope.launch {
             shouldDisplayUndoBookmark = true
             lastRemovedBookmarkId = newsResourceId
+            lastRemovedBookmarkNote = currentNote
             userDataRepository.setNewsResourceBookmarked(newsResourceId, false)
         }
     }
@@ -70,8 +82,11 @@ class BookmarksViewModel @Inject constructor(
 
     fun undoBookmarkRemoval() {
         viewModelScope.launch {
-            lastRemovedBookmarkId?.let {
-                userDataRepository.setNewsResourceBookmarked(it, true)
+            lastRemovedBookmarkId?.let { id ->
+                userDataRepository.setNewsResourceBookmarked(id, true)
+                lastRemovedBookmarkNote?.let { note ->
+                    userDataRepository.updateBookmarkNote(id, note)
+                }
             }
         }
         clearUndoState()
@@ -80,5 +95,76 @@ class BookmarksViewModel @Inject constructor(
     fun clearUndoState() {
         shouldDisplayUndoBookmark = false
         lastRemovedBookmarkId = null
+        lastRemovedBookmarkNote = null
+    }
+
+    fun enterSelectionMode(initialSelectedId: String? = null) {
+        isInSelectionMode = true
+        selectedBookmarkIds = initialSelectedId?.let { setOf(it) } ?: emptySet()
+    }
+
+    fun exitSelectionMode() {
+        isInSelectionMode = false
+        selectedBookmarkIds = emptySet()
+    }
+
+    fun toggleBookmarkSelection(newsResourceId: String) {
+        selectedBookmarkIds = if (newsResourceId in selectedBookmarkIds) {
+            selectedBookmarkIds - newsResourceId
+        } else {
+            selectedBookmarkIds + newsResourceId
+        }
+    }
+
+    fun selectAllBookmarks(allIds: Set<String>) {
+        selectedBookmarkIds = if (selectedBookmarkIds.size == allIds.size) {
+            emptySet()
+        } else {
+            allIds
+        }
+    }
+
+    fun removeSelectedBookmarks() {
+        if (selectedBookmarkIds.isEmpty()) return
+
+        val feed = (feedUiState.value as? NewsFeedUiState.Success)?.feed ?: emptyList()
+        val toRemove = feed.filter { it.id in selectedBookmarkIds }
+        val notesMap = toRemove.associate { it.id to (it.bookmarkNote ?: "") }
+        val idsToRemove = selectedBookmarkIds
+
+        bulkRemovedCount = idsToRemove.size
+        lastBulkRemovedBookmarks = notesMap
+        shouldDisplayUndoBulkRemoval = true
+
+        viewModelScope.launch {
+            userDataRepository.removeBookmarkedNewsResources(idsToRemove)
+        }
+        exitSelectionMode()
+    }
+
+    fun undoBulkRemoval() {
+        val toRestore = lastBulkRemovedBookmarks
+        viewModelScope.launch {
+            userDataRepository.restoreBookmarkedNewsResources(toRestore.keys, toRestore)
+        }
+        clearBulkUndoState()
+    }
+
+    fun clearBulkUndoState() {
+        shouldDisplayUndoBulkRemoval = false
+        lastBulkRemovedBookmarks = emptyMap()
+        bulkRemovedCount = 0
+    }
+
+    fun updateBookmarkNote(newsResourceId: String, note: String) {
+        viewModelScope.launch {
+            userDataRepository.updateBookmarkNote(newsResourceId, note)
+        }
+    }
+
+    fun deleteBookmarkNote(newsResourceId: String) {
+        viewModelScope.launch {
+            userDataRepository.updateBookmarkNote(newsResourceId, null)
+        }
     }
 }

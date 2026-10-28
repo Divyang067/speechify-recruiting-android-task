@@ -56,6 +56,7 @@ class NiaPreferencesDataSource @Inject constructor(
                 },
                 useDynamicColor = it.useDynamicColor,
                 shouldHideOnboarding = it.shouldHideOnboarding,
+                bookmarkNotes = it.bookmarkNotesMap,
             )
         }
 
@@ -128,6 +129,56 @@ class NiaPreferencesDataSource @Inject constructor(
                         bookmarkedNewsResourceIds.put(newsResourceId, true)
                     } else {
                         bookmarkedNewsResourceIds.remove(newsResourceId)
+                        bookmarkNotes.remove(newsResourceId)
+                    }
+                }
+            }
+        } catch (ioException: IOException) {
+            Log.e("NiaPreferences", "Failed to update user preferences", ioException)
+        }
+    }
+
+    suspend fun updateBookmarkNote(newsResourceId: String, note: String?) {
+        try {
+            userPreferences.updateData {
+                it.copy {
+                    if (note.isNullOrBlank()) {
+                        bookmarkNotes.remove(newsResourceId)
+                    } else {
+                        bookmarkNotes.put(newsResourceId, note.take(280))
+                    }
+                }
+            }
+        } catch (ioException: IOException) {
+            Log.e("NiaPreferences", "Failed to update user preferences", ioException)
+        }
+    }
+
+    suspend fun removeBookmarkedNewsResources(newsResourceIds: Set<String>) {
+        try {
+            userPreferences.updateData {
+                it.copy {
+                    newsResourceIds.forEach { id ->
+                        bookmarkedNewsResourceIds.remove(id)
+                        bookmarkNotes.remove(id)
+                    }
+                }
+            }
+        } catch (ioException: IOException) {
+            Log.e("NiaPreferences", "Failed to update user preferences", ioException)
+        }
+    }
+
+    suspend fun restoreBookmarkedNewsResources(newsResourceIds: Set<String>, notes: Map<String, String>) {
+        try {
+            userPreferences.updateData {
+                it.copy {
+                    newsResourceIds.forEach { id ->
+                        bookmarkedNewsResourceIds.put(id, true)
+                        val note = notes[id]
+                        if (!note.isNullOrBlank()) {
+                            bookmarkNotes.put(id, note)
+                        }
                     }
                 }
             }

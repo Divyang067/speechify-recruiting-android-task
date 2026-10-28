@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2022 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -255,5 +255,46 @@ class OfflineFirstUserDataRepositoryTest {
 
             subject.setFollowedTopicIds(emptySet())
             assertFalse(subject.userData.first().shouldHideOnboarding)
+        }
+
+    @Test
+    fun offlineFirstUserDataRepository_update_bookmark_note_and_delete_on_unbookmark() =
+        testScope.runTest {
+            subject.setNewsResourceBookmarked(newsResourceId = "1", bookmarked = true)
+            subject.updateBookmarkNote(newsResourceId = "1", note = "Important article")
+
+            assertEquals(
+                "Important article",
+                subject.userData.first().bookmarkNotes["1"],
+            )
+
+            // Unbookmarking automatically deletes note
+            subject.setNewsResourceBookmarked(newsResourceId = "1", bookmarked = false)
+
+            assertFalse(subject.userData.first().bookmarkedNewsResources.contains("1"))
+            assertFalse(subject.userData.first().bookmarkNotes.containsKey("1"))
+        }
+
+    @Test
+    fun offlineFirstUserDataRepository_bulk_remove_and_restore_bookmarks_with_notes() =
+        testScope.runTest {
+            subject.setNewsResourceBookmarked("1", true)
+            subject.updateBookmarkNote("1", "Note 1")
+            subject.setNewsResourceBookmarked("2", true)
+            subject.updateBookmarkNote("2", "Note 2")
+
+            val initialNotes = subject.userData.first().bookmarkNotes
+            assertEquals(2, initialNotes.size)
+
+            // Bulk remove
+            subject.removeBookmarkedNewsResources(setOf("1", "2"))
+            assertTrue(subject.userData.first().bookmarkedNewsResources.isEmpty())
+            assertTrue(subject.userData.first().bookmarkNotes.isEmpty())
+
+            // Restore
+            subject.restoreBookmarkedNewsResources(setOf("1", "2"), initialNotes)
+            assertEquals(setOf("1", "2"), subject.userData.first().bookmarkedNewsResources)
+            assertEquals("Note 1", subject.userData.first().bookmarkNotes["1"])
+            assertEquals("Note 2", subject.userData.first().bookmarkNotes["2"])
         }
 }

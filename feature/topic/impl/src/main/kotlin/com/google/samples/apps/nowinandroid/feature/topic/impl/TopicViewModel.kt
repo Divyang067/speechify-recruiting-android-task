@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -74,7 +74,16 @@ class TopicViewModel @AssistedInject constructor(
         }
     }
 
-    fun bookmarkNews(newsResourceId: String, bookmarked: Boolean) {
+    fun bookmarkNews(newsResourceId: String, bookmarked: Boolean, note: String? = null) {
+        viewModelScope.launch {
+            userDataRepository.setNewsResourceBookmarked(newsResourceId, bookmarked)
+            if (bookmarked && !note.isNullOrBlank()) {
+                userDataRepository.updateBookmarkNote(newsResourceId, note)
+            }
+        }
+    }
+
+    private fun _unused_bookmarkNews(newsResourceId: String, bookmarked: Boolean) {
         viewModelScope.launch {
             userDataRepository.setNewsResourceBookmarked(newsResourceId, bookmarked)
         }

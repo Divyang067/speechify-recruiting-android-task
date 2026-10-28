@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -91,6 +91,7 @@ fun TopicScreen(
         onBackClick = onBackClick,
         onFollowClick = viewModel::followTopicToggle,
         onBookmarkChanged = viewModel::bookmarkNews,
+        onBookmarkWithNote = { id, note -> viewModel.bookmarkNews(id, true, note) },
         onNewsResourceViewed = { viewModel.setNewsResourceViewed(it, true) },
         onTopicClick = onTopicClick,
     )
@@ -108,6 +109,7 @@ internal fun TopicScreen(
     onBookmarkChanged: (String, Boolean) -> Unit,
     onNewsResourceViewed: (String) -> Unit,
     modifier: Modifier = Modifier,
+    onBookmarkWithNote: ((String, String?) -> Unit)? = null,
 ) {
     val state = rememberLazyListState()
     TrackScrollJank(scrollableState = state, stateName = "topic:screen")
@@ -194,6 +196,7 @@ private fun LazyListScope.topicBody(
     onBookmarkChanged: (String, Boolean) -> Unit,
     onNewsResourceViewed: (String) -> Unit,
     onTopicClick: (String) -> Unit,
+    onBookmarkWithNote: ((String, String?) -> Unit)? = null,
 ) {
     // TODO: Show icon if available
     item {
@@ -233,12 +236,14 @@ private fun LazyListScope.userNewsResourceCards(
     onBookmarkChanged: (String, Boolean) -> Unit,
     onNewsResourceViewed: (String) -> Unit,
     onTopicClick: (String) -> Unit,
+    onBookmarkWithNote: ((String, String?) -> Unit)? = null,
 ) {
     when (news) {
         is NewsUiState.Success -> {
             userNewsResourceCardItems(
                 items = news.news,
                 onToggleBookmark = { onBookmarkChanged(it.id, !it.isSaved) },
+                onToggleBookmarkWithNote = onBookmarkWithNote?.let { callback -> { item, note -> callback(item.id, note) } },
                 onNewsResourceViewed = onNewsResourceViewed,
                 onTopicClick = onTopicClick,
                 itemModifier = Modifier.padding(24.dp),

@@ -28,6 +28,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
@@ -196,5 +197,112 @@ class BookmarksScreenTest {
         assertEquals(false, undoStateCleared)
         testLifecycleOwner.handleLifecycleEvent(event = Lifecycle.Event.ON_STOP)
         assertEquals(true, undoStateCleared)
+    }
+
+    @Test
+    fun feed_whenBookmarkHasNote_displaysNoteBelowTitle() {
+        val testItemWithNote = userNewsResourcesTestData[0].copy(
+            bookmarkNote = "My personal analysis note",
+        )
+
+        composeTestRule.setContent {
+            BookmarksScreen(
+                feedState = NewsFeedUiState.Success(listOf(testItemWithNote)),
+                onShowSnackbar = { _, _ -> false },
+                removeFromBookmarks = {},
+                onTopicClick = {},
+                onNewsResourceViewed = {},
+            )
+        }
+
+        composeTestRule
+            .onNodeWithText("My personal analysis note")
+            .assertExists()
+            .assertHasClickAction()
+    }
+
+    @Test
+    fun feed_whenOutsideSelectionMode_showsEditButton() {
+        var enterSelectionModeCalled = false
+
+        composeTestRule.setContent {
+            BookmarksScreen(
+                feedState = NewsFeedUiState.Success(userNewsResourcesTestData.take(2)),
+                onShowSnackbar = { _, _ -> false },
+                removeFromBookmarks = {},
+                onTopicClick = {},
+                onNewsResourceViewed = {},
+                isInSelectionMode = false,
+                onEnterSelectionMode = {
+                    enterSelectionModeCalled = true
+                },
+            )
+        }
+
+        composeTestRule
+            .onNodeWithTag("bookmarks:editButton")
+            .assertExists()
+            .performClick()
+
+        assertTrue(enterSelectionModeCalled)
+    }
+
+    @Test
+    fun feed_whenInSelectionMode_showsCheckboxesAndCounter() {
+        val testItems = userNewsResourcesTestData.take(2)
+        val selectedIds = setOf(testItems[0].id)
+        var selectAllCalled = false
+        var cancelCalled = false
+        var removeCalled = false
+
+        composeTestRule.setContent {
+            BookmarksScreen(
+                feedState = NewsFeedUiState.Success(testItems),
+                onShowSnackbar = { _, _ -> false },
+                removeFromBookmarks = {},
+                onTopicClick = {},
+                onNewsResourceViewed = {},
+                isInSelectionMode = true,
+                selectedBookmarkIds = selectedIds,
+                onExitSelectionMode = { cancelCalled = true },
+                onSelectAll = { selectAllCalled = true },
+                onRemoveSelected = { removeCalled = true },
+            )
+        }
+
+        // Verify selection bar & counter exist
+        composeTestRule
+            .onNodeWithTag("bookmarks:selectionBar")
+            .assertExists()
+
+        composeTestRule
+            .onNodeWithText("1 selected")
+            .assertExists()
+
+        // Verify checkboxes exist on items
+        composeTestRule
+            .onNodeWithTag("newsResourceCard:checkbox:${testItems[0].id}")
+            .assertExists()
+
+        // Test Select All click
+        composeTestRule
+            .onNodeWithTag("bookmarks:selectAllButton")
+            .assertExists()
+            .performClick()
+        assertTrue(selectAllCalled)
+
+        // Test Remove Selected click
+        composeTestRule
+            .onNodeWithTag("bookmarks:removeSelectedButton")
+            .assertExists()
+            .performClick()
+        assertTrue(removeCalled)
+
+        // Test Cancel click
+        composeTestRule
+            .onNodeWithTag("bookmarks:cancelSelection")
+            .assertExists()
+            .performClick()
+        assertTrue(cancelCalled)
     }
 }

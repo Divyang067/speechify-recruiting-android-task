@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2023 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -115,6 +115,7 @@ internal fun SearchScreen(
         onSearchTriggered = searchViewModel::onSearchTriggered,
         onClearRecentSearches = searchViewModel::clearRecentSearches,
         onNewsResourcesCheckedChanged = searchViewModel::setNewsResourceBookmarked,
+        onBookmarkWithNote = { id, note -> searchViewModel.setNewsResourceBookmarked(id, true, note) },
         onNewsResourceViewed = { searchViewModel.setNewsResourceViewed(it, true) },
         onFollowButtonClick = searchViewModel::followTopic,
         onBackClick = onBackClick,
@@ -133,6 +134,7 @@ internal fun SearchScreen(
     onSearchTriggered: (String) -> Unit = {},
     onClearRecentSearches: () -> Unit = {},
     onNewsResourcesCheckedChanged: (String, Boolean) -> Unit = { _, _ -> },
+    onBookmarkWithNote: ((String, String?) -> Unit)? = null,
     onNewsResourceViewed: (String) -> Unit = {},
     onFollowButtonClick: (String, Boolean) -> Unit = { _, _ -> },
     onBackClick: () -> Unit = {},
@@ -191,6 +193,7 @@ internal fun SearchScreen(
                         newsResources = searchResultUiState.newsResources,
                         onSearchTriggered = onSearchTriggered,
                         onTopicClick = onTopicClick,
+                        onBookmarkWithNote = onBookmarkWithNote,
                         onNewsResourcesCheckedChanged = onNewsResourcesCheckedChanged,
                         onNewsResourceViewed = onNewsResourceViewed,
                         onFollowButtonClick = onFollowButtonClick,
@@ -288,6 +291,7 @@ private fun SearchResultBody(
     newsResources: List<UserNewsResource>,
     onSearchTriggered: (String) -> Unit,
     onTopicClick: (String) -> Unit,
+    onBookmarkWithNote: ((String, String?) -> Unit)? = null,
     onNewsResourcesCheckedChanged: (String, Boolean) -> Unit,
     onNewsResourceViewed: (String) -> Unit,
     onFollowButtonClick: (String, Boolean) -> Unit,
@@ -362,6 +366,7 @@ private fun SearchResultBody(
                     onNewsResourcesCheckedChanged = onNewsResourcesCheckedChanged,
                     onNewsResourceViewed = onNewsResourceViewed,
                     onTopicClick = onTopicClick,
+                    onBookmarkWithNote = onBookmarkWithNote,
                     onExpandedCardClick = {
                         onSearchTriggered(searchQuery)
                     },

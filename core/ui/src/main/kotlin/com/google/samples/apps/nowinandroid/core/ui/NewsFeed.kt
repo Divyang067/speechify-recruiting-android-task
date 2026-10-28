@@ -50,6 +50,13 @@ fun LazyStaggeredGridScope.newsFeed(
     onNewsResourceViewed: (String) -> Unit,
     onTopicClick: (String) -> Unit,
     onExpandedCardClick: () -> Unit = {},
+    onBookmarkWithNote: ((String, String?) -> Unit)? = null,
+    onEditNote: ((String, String) -> Unit)? = null,
+    onDeleteNote: ((String) -> Unit)? = null,
+    isInSelectionMode: Boolean = false,
+    selectedIds: Set<String> = emptySet(),
+    onToggleSelect: ((String) -> Unit)? = null,
+    onCardLongClick: ((String) -> Unit)? = null,
 ) {
     when (feedState) {
         NewsFeedUiState.Loading -> Unit
@@ -81,6 +88,23 @@ fun LazyStaggeredGridScope.newsFeed(
                             userNewsResource.id,
                             !userNewsResource.isSaved,
                         )
+                    },
+                    onToggleBookmarkWithNote = onBookmarkWithNote?.let { callback ->
+                        { note -> callback(userNewsResource.id, note) }
+                    },
+                    onEditNote = onEditNote?.let { callback ->
+                        { note -> callback(userNewsResource.id, note) }
+                    },
+                    onDeleteNote = onDeleteNote?.let { callback ->
+                        { callback(userNewsResource.id) }
+                    },
+                    isInSelectionMode = isInSelectionMode,
+                    isSelected = userNewsResource.id in selectedIds,
+                    onToggleSelect = onToggleSelect?.let { callback ->
+                        { callback(userNewsResource.id) }
+                    },
+                    onLongClick = onCardLongClick?.let { callback ->
+                        { callback(userNewsResource.id) }
                     },
                     onTopicClick = onTopicClick,
                     modifier = Modifier

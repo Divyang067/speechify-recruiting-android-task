@@ -23,6 +23,7 @@ import android.view.View
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.draganddrop.dragAndDropSource
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -38,6 +39,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -95,7 +97,18 @@ fun NewsResourceCardExpanded(
     onClick: () -> Unit,
     onTopicClick: (String) -> Unit,
     modifier: Modifier = Modifier,
+    onToggleBookmarkWithNote: ((String?) -> Unit)? = null,
+    onEditNote: ((String) -> Unit)? = null,
+    onDeleteNote: (() -> Unit)? = null,
+    isInSelectionMode: Boolean = false,
+    isSelected: Boolean = false,
+    onToggleSelect: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
 ) {
+    val bookmarkNote = userNewsResource.bookmarkNote
+    var showAddNoteDialog by remember { mutableStateOf(false) }
+    var showEditNoteDialog by remember { mutableStateOf(false) }
+
     val clickActionLabel = stringResource(R.string.core_ui_card_tap_action)
     val sharingLabel = stringResource(R.string.core_ui_feed_sharing)
     val sharingContent = stringResource(
@@ -110,16 +123,60 @@ fun NewsResourceCardExpanded(
         0
     }
 
+    if (showAddNoteDialog) {
+        BookmarkNoteDialog(
+            onDismiss = { showAddNoteDialog = false },
+            onSave = { note ->
+                showAddNoteDialog = false
+                if (onToggleBookmarkWithNote != null) {
+                    onToggleBookmarkWithNote(note)
+                } else {
+                    onToggleBookmark()
+                }
+            },
+            onSkip = {
+                showAddNoteDialog = false
+                if (onToggleBookmarkWithNote != null) {
+                    onToggleBookmarkWithNote(null)
+                } else {
+                    onToggleBookmark()
+                }
+            },
+        )
+    }
+
+    if (showEditNoteDialog && bookmarkNote != null) {
+        EditBookmarkNoteDialog(
+            initialNote = bookmarkNote,
+            onDismiss = { showEditNoteDialog = false },
+            onSave = { updatedNote ->
+                showEditNoteDialog = false
+                onEditNote?.invoke(updatedNote)
+            },
+            onDelete = {
+                showEditNoteDialog = false
+                onDeleteNote?.invoke()
+            },
+        )
+    }
+
     Card(
-        onClick = onClick,
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        // Use custom label for accessibility services to communicate button's action to user.
-        // Pass null for action to only override the label and not the actual action.
         modifier = modifier
             .semantics {
                 onClick(label = clickActionLabel, action = null)
             }
+            .combinedClickable(
+                onClick = {
+                    if (isInSelectionMode) {
+                        onToggleSelect?.invoke()
+                    } else {
+                        onClick()
+                    }
+                },
+                onLongClick = if (!isInSelectionMode) onLongClick else null,
+            )
             .testTag("newsResourceCard:${userNewsResource.id}"),
     ) {
         Column {
@@ -133,7 +190,9 @@ fun NewsResourceCardExpanded(
             ) {
                 Column {
                     Spacer(modifier = Modifier.height(12.dp))
-                    Row {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         NewsResourceTitle(
                             userNewsResource.title,
                             modifier = Modifier
@@ -149,7 +208,36 @@ fun NewsResourceCardExpanded(
                                 },
                         )
                         Spacer(modifier = Modifier.weight(1f))
-                        BookmarkButton(isBookmarked, onToggleBookmark)
+                        if (isInSelectionMode) {
+                            Checkbox(
+                                checked = isSelected,
+                                onCheckedChange = { onToggleSelect?.invoke() },
+                                modifier = Modifier.testTag("newsResourceCard:checkbox:${userNewsResource.id}"),
+                            )
+                        } else {
+                            BookmarkButton(
+                                isBookmarked = isBookmarked,
+                                onClick = {
+                                    if (isBookmarked) {
+                                        onToggleBookmark()
+                                    } else {
+                                        showAddNoteDialog = true
+                                    }
+                                },
+                            )
+                        }
+                    }
+                    if (!bookmarkNote.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        BookmarkNoteItem(
+                            note = bookmarkNote,
+                            onClick = if (!isInSelectionMode && onEditNote != null) {
+                                { showEditNoteDialog = true }
+                            } else {
+                                null
+                            },
+                            modifier = Modifier.testTag("bookmarkNote:${userNewsResource.id}"),
+                        )
                     }
                     Spacer(modifier = Modifier.height(14.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -171,6 +259,43 @@ fun NewsResourceCardExpanded(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun BookmarkNoteItem(
+    note: String,
+    onClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        onClick = onClick ?: {},
+        enabled = onClick != null,
+        modifier = modifier
+            .fillMaxWidth()
+            .semantics {
+                onClick(label = "Edit note", action = null)
+            },
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = NiaIcons.ShortText,
+                contentDescription = stringResource(R.string.core_ui_bookmark_note_content_desc),
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(16.dp),
+            )
+            Spacer(modifier = Modifier.size(8.dp))
+            Text(
+                text = note,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

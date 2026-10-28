@@ -115,9 +115,12 @@ class ForYouViewModel @Inject constructor(
         }
     }
 
-    fun updateNewsResourceSaved(newsResourceId: String, isChecked: Boolean) {
+    fun updateNewsResourceSaved(newsResourceId: String, isChecked: Boolean, note: String? = null) {
         viewModelScope.launch {
             userDataRepository.setNewsResourceBookmarked(newsResourceId, isChecked)
+            if (isChecked && !note.isNullOrBlank()) {
+                userDataRepository.updateBookmarkNote(newsResourceId, note)
+            }
         }
     }
 

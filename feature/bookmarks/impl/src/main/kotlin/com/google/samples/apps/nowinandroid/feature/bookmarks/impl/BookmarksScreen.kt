@@ -16,6 +16,7 @@
 
 package com.google.samples.apps.nowinandroid.feature.bookmarks.impl
 
+import androidx.activity.compose.BackHandler
 import androidx.annotation.VisibleForTesting
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.Orientation
@@ -23,6 +24,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -32,6 +34,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentSize
@@ -39,8 +42,15 @@ import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -64,6 +74,7 @@ import com.google.samples.apps.nowinandroid.core.designsystem.component.NiaLoadi
 import com.google.samples.apps.nowinandroid.core.designsystem.component.scrollbar.DraggableScrollbar
 import com.google.samples.apps.nowinandroid.core.designsystem.component.scrollbar.rememberDraggableScroller
 import com.google.samples.apps.nowinandroid.core.designsystem.component.scrollbar.scrollbarState
+import com.google.samples.apps.nowinandroid.core.designsystem.icon.NiaIcons
 import com.google.samples.apps.nowinandroid.core.designsystem.theme.LocalTintTheme
 import com.google.samples.apps.nowinandroid.core.designsystem.theme.NiaTheme
 import com.google.samples.apps.nowinandroid.core.model.data.UserNewsResource
@@ -94,6 +105,19 @@ internal fun BookmarksScreen(
         shouldDisplayUndoBookmark = viewModel.shouldDisplayUndoBookmark,
         undoBookmarkRemoval = viewModel::undoBookmarkRemoval,
         clearUndoState = viewModel::clearUndoState,
+        isInSelectionMode = viewModel.isInSelectionMode,
+        selectedBookmarkIds = viewModel.selectedBookmarkIds,
+        onEnterSelectionMode = viewModel::enterSelectionMode,
+        onExitSelectionMode = viewModel::exitSelectionMode,
+        onToggleSelect = viewModel::toggleBookmarkSelection,
+        onSelectAll = viewModel::selectAllBookmarks,
+        onRemoveSelected = viewModel::removeSelectedBookmarks,
+        shouldDisplayUndoBulkRemoval = viewModel.shouldDisplayUndoBulkRemoval,
+        bulkRemovedCount = viewModel.bulkRemovedCount,
+        undoBulkRemoval = viewModel::undoBulkRemoval,
+        clearBulkUndoState = viewModel::clearBulkUndoState,
+        onEditNote = viewModel::updateBookmarkNote,
+        onDeleteNote = viewModel::deleteBookmarkNote,
     )
 }
 
@@ -112,9 +136,26 @@ internal fun BookmarksScreen(
     shouldDisplayUndoBookmark: Boolean = false,
     undoBookmarkRemoval: () -> Unit = {},
     clearUndoState: () -> Unit = {},
+    isInSelectionMode: Boolean = false,
+    selectedBookmarkIds: Set<String> = emptySet(),
+    onEnterSelectionMode: (String?) -> Unit = {},
+    onExitSelectionMode: () -> Unit = {},
+    onToggleSelect: (String) -> Unit = {},
+    onSelectAll: (Set<String>) -> Unit = {},
+    onRemoveSelected: () -> Unit = {},
+    shouldDisplayUndoBulkRemoval: Boolean = false,
+    bulkRemovedCount: Int = 0,
+    undoBulkRemoval: () -> Unit = {},
+    clearBulkUndoState: () -> Unit = {},
+    onEditNote: (String, String) -> Unit = { _, _ -> },
+    onDeleteNote: (String) -> Unit = {},
 ) {
     val bookmarkRemovedMessage = stringResource(id = R.string.feature_bookmarks_api_removed)
     val undoText = stringResource(id = R.string.feature_bookmarks_api_undo)
+    val bulkRemovedMessage = stringResource(
+        id = R.string.feature_bookmarks_api_bulk_removed,
+        bulkRemovedCount,
+    )
 
     LaunchedEffect(shouldDisplayUndoBookmark) {
         if (shouldDisplayUndoBookmark) {
@@ -127,19 +168,44 @@ internal fun BookmarksScreen(
         }
     }
 
+    LaunchedEffect(shouldDisplayUndoBulkRemoval) {
+        if (shouldDisplayUndoBulkRemoval) {
+            val snackBarResult = onShowSnackbar(bulkRemovedMessage, undoText)
+            if (snackBarResult) {
+                undoBulkRemoval()
+            } else {
+                clearBulkUndoState()
+            }
+        }
+    }
+
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
         clearUndoState()
+        clearBulkUndoState()
+    }
+
+    BackHandler(enabled = isInSelectionMode) {
+        onExitSelectionMode()
     }
 
     when (feedState) {
         Loading -> LoadingState(modifier)
         is Success -> if (feedState.feed.isNotEmpty()) {
             BookmarksGrid(
-                feedState,
-                removeFromBookmarks,
-                onNewsResourceViewed,
-                onTopicClick,
-                modifier,
+                feedState = feedState,
+                removeFromBookmarks = removeFromBookmarks,
+                onNewsResourceViewed = onNewsResourceViewed,
+                onTopicClick = onTopicClick,
+                isInSelectionMode = isInSelectionMode,
+                selectedBookmarkIds = selectedBookmarkIds,
+                onEnterSelectionMode = onEnterSelectionMode,
+                onExitSelectionMode = onExitSelectionMode,
+                onToggleSelect = onToggleSelect,
+                onSelectAll = onSelectAll,
+                onRemoveSelected = onRemoveSelected,
+                onEditNote = onEditNote,
+                onDeleteNote = onDeleteNote,
+                modifier = modifier,
             )
         } else {
             EmptyState(modifier)
@@ -166,6 +232,15 @@ private fun BookmarksGrid(
     removeFromBookmarks: (String) -> Unit,
     onNewsResourceViewed: (String) -> Unit,
     onTopicClick: (String) -> Unit,
+    isInSelectionMode: Boolean,
+    selectedBookmarkIds: Set<String>,
+    onEnterSelectionMode: (String?) -> Unit,
+    onExitSelectionMode: () -> Unit,
+    onToggleSelect: (String) -> Unit,
+    onSelectAll: (Set<String>) -> Unit,
+    onRemoveSelected: () -> Unit,
+    onEditNote: (String, String) -> Unit,
+    onDeleteNote: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scrollableState = rememberLazyStaggeredGridState()
@@ -184,11 +259,44 @@ private fun BookmarksGrid(
                 .fillMaxSize()
                 .testTag("bookmarks:feed"),
         ) {
+            item(span = StaggeredGridItemSpan.FullLine) {
+                if (isInSelectionMode) {
+                    BookmarksSelectionBar(
+                        selectedCount = selectedBookmarkIds.size,
+                        onCancel = onExitSelectionMode,
+                        onSelectAll = {
+                            val allIds = (feedState as? Success)?.feed?.map { it.id }?.toSet() ?: emptySet()
+                            onSelectAll(allIds)
+                        },
+                        onRemove = onRemoveSelected,
+                    )
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
+                        horizontalArrangement = Arrangement.End,
+                    ) {
+                        TextButton(
+                            onClick = { onEnterSelectionMode(null) },
+                            modifier = Modifier.testTag("bookmarks:editButton"),
+                        ) {
+                            Text(text = stringResource(id = R.string.feature_bookmarks_api_edit))
+                        }
+                    }
+                }
+            }
             newsFeed(
                 feedState = feedState,
                 onNewsResourcesCheckedChanged = { id, _ -> removeFromBookmarks(id) },
                 onNewsResourceViewed = onNewsResourceViewed,
                 onTopicClick = onTopicClick,
+                onEditNote = onEditNote,
+                onDeleteNote = onDeleteNote,
+                isInSelectionMode = isInSelectionMode,
+                selectedIds = selectedBookmarkIds,
+                onToggleSelect = onToggleSelect,
+                onCardLongClick = onEnterSelectionMode,
             )
             item(span = StaggeredGridItemSpan.FullLine) {
                 Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.safeDrawing))
@@ -196,7 +304,7 @@ private fun BookmarksGrid(
         }
         val itemsAvailable = when (feedState) {
             Loading -> 1
-            is Success -> feedState.feed.size
+            is Success -> feedState.feed.size + 1
         }
         val scrollbarState = scrollableState.scrollbarState(
             itemsAvailable = itemsAvailable,
@@ -213,6 +321,66 @@ private fun BookmarksGrid(
                 itemsAvailable = itemsAvailable,
             ),
         )
+    }
+}
+
+@Composable
+fun BookmarksSelectionBar(
+    selectedCount: Int,
+    onCancel: () -> Unit,
+    onSelectAll: () -> Unit,
+    onRemove: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("bookmarks:selectionBar"),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(
+                onClick = onCancel,
+                modifier = Modifier.testTag("bookmarks:cancelSelection"),
+            ) {
+                Icon(
+                    imageVector = NiaIcons.Close,
+                    contentDescription = stringResource(id = R.string.feature_bookmarks_api_cancel),
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = stringResource(id = R.string.feature_bookmarks_api_selected_counter, selectedCount),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.testTag("bookmarks:selectedCounter"),
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            TextButton(
+                onClick = onSelectAll,
+                modifier = Modifier.testTag("bookmarks:selectAllButton"),
+            ) {
+                Text(text = stringResource(id = R.string.feature_bookmarks_api_select_all))
+            }
+            Spacer(modifier = Modifier.width(4.dp))
+            Button(
+                onClick = onRemove,
+                enabled = selectedCount > 0,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError,
+                ),
+                modifier = Modifier.testTag("bookmarks:removeSelectedButton"),
+            ) {
+                Text(text = stringResource(id = R.string.feature_bookmarks_api_remove))
+            }
+        }
     }
 }
 
@@ -275,6 +443,15 @@ private fun BookmarksGridPreview(
             removeFromBookmarks = {},
             onNewsResourceViewed = {},
             onTopicClick = {},
+            isInSelectionMode = false,
+            selectedBookmarkIds = emptySet(),
+            onEnterSelectionMode = {},
+            onExitSelectionMode = {},
+            onToggleSelect = {},
+            onSelectAll = {},
+            onRemoveSelected = {},
+            onEditNote = { _, _ -> },
+            onDeleteNote = {},
         )
     }
 }
